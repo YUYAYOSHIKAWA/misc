@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Iframe 同一オリジン & 表示可否テスト</title>
+<style>
+body {
+  font-family: system-ui, sans-serif;
+  display: flex;
+  height: 100vh;
+  margin: 0;
+}
+#left {
+  width: 40%;
+  padding: 20px;
+  border-right: 1px solid #ccc;
+}
+#right {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+iframe {
+  width: 100%;
+  height: 60vh;
+  border: 1px solid #999;
+  margin-top: 10px;
+}
+.log-ok {
+  color: green;
+  font-weight: bold;
+}
+.log-ng {
+  color: red;
+  font-weight: bold;
+}
+.log-warn {
+  color: orange;
+  font-weight: bold;
+}
+</style>
+</head>
+<body>
+
+<div id="left">
+  <h2>iframe テストツール</h2>
+  <p>業務アプリの URL を入力して「Test Start」を押してください。</p>
+
+  <input type="text" id="targetUrl" 
+    placeholder="https://example.com/app" 
+    style="width: 100%; padding: 6px;">
+
+  <button id="startBtn" style="margin-top: 10px; padding: 8px 16px;">
+    Test Start
+  </button>
+
+  <iframe id="testFrame"></iframe>
+</div>
+
+<div id="right">
+  <h3>テスト結果ログ</h3>
+  <div id="log"></div>
+</div>
+
+<script>
+function log(msg, cls) {
+  const div = document.createElement("div");
+  if (cls) div.className = cls;
+  div.textContent = msg;
+  document.getElementById("log").appendChild(div);
+}
+
+document.getElementById("startBtn").addEventListener("click", () => {
+  document.getElementById("log").innerHTML = "";
+
+  const url = document.getElementById("targetUrl").value;
+  if (!url) {
+    alert("URL を入力してください");
+    return;
+  }
+
+  log(`▶ iframe 読み込み開始: ${url}`, "log-warn");
+
+  const iframe = document.getElementById("testFrame");
+
+  // iframe 読み込み開始
+  iframe.src = url;
+
+  iframe.onload = () => {
+    log("✓ iframe のロード完了", "log-ok");
+
+    // 同一オリジン判定
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      log("✓ DOM にアクセス成功（同一オリジン）", "log-ok");
+
+      // 例として body の内容を取得
+      const body = doc.body.innerText.substring(0, 100);
+      log(`✓ DOM 内容取得 OK（先頭100文字）: ${body}`, "log-ok");
+
+      // テストとして body を黄色枠で囲う
+      doc.body.style.outline = "4px solid orange";
+      log("✓ iframe 内の DOM に装飾を適用 → オレンジ枠が表示されればOK", "log-ok");
+
+    } catch (e) {
+      log("✗ DOM アクセス失敗（別オリジンまたはセキュリティ制限）", "log-ng");
+      log(`エラー内容: ${e.message}`, "log-ng");
+
+      log("▼ よくある原因：", "log-warn");
+      log("・X-Frame-Options: DENY / SAMEORIGIN（iframe に表示禁止）", "log-warn");
+      log("・Content-Security-Policy (frame-ancestors) によるブロック", "log-warn");
+      log("・別オリジンのため、DOM アクセス不可（Cross-Origin制限）", "log-warn");
+
+      return;
+    }
+  };
+
+  iframe.onerror = () => {
+    log("✗ iframe ロードエラー（URLが無効、またはX-Frame-Optionsでブロック）", "log-ng");
+  };
+});
+</script>
+
+</body>
+</html>
